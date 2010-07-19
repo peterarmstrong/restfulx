@@ -1,5 +1,15 @@
 require File.join(File.dirname(__FILE__), '..', '..', 'lib', 'restfulx') if !defined?(RestfulX)
 
+module Rails
+  module Generator
+    module Commands
+      class Create
+        include SchemaToRxYaml
+      end
+    end
+  end
+end
+
 class RxMainAppGenerator < Rails::Generator::Base
   include RestfulX::Configuration
   
@@ -33,14 +43,14 @@ class RxMainAppGenerator < Rails::Generator::Base
     end
 
     @component_names = []
-    if File.exists?("#{flex_root}/#{base_folder}/components/generated")
-      @component_names = list_mxml_files("#{flex_root}/#{base_folder}/components/generated")
+    if File.exists?("#{flex_root}/#{base_folder}/views/generated")
+      @component_names = list_mxml_files("#{flex_root}/#{base_folder}/views/generated")
     end
   end
 
   def manifest
     record do |m|      
-      m.template 'mainapp.mxml', File.join("#{flex_root}", "#{project_name}.mxml")
+      m.template 'mainapp.mxml', File.join("#{flex_root}", "#{flex_project_name}.mxml"), :collision => options[:collision]
     end
   end
 

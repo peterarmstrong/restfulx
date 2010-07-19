@@ -1,12 +1,14 @@
+$:.unshift(File.dirname(__FILE__)) unless $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
+
 # ActiveRecord specific Rake tasks. Namely, nice little extras such as:
 # - db:mysql:stage
 # - db:refresh
-require File.join(File.dirname(__FILE__), 'tasks')
-require File.join(File.dirname(__FILE__), 'schema_to_yaml')
+require 'tasks'
+require 'schema_to_rx_yaml'
 
 # stores local copy of the application environment ('production', 'test', etc)
 # so that appropriate values in config/database.yml are used
-APP_ENV = defined?(ENV['RAILS_ENV']) ? ENV['RAILS_ENV'] : ENV['MERB_ENV']
+APP_ENV = ENV['RAILS_ENV']
 
 namespace :db do
   namespace :mysql do
@@ -82,10 +84,9 @@ namespace :db do
   
   # used to analyze your schema and dump out a model.yml file for converting old rails projects
   namespace :schema do
-    desc "Create model.yml from schema.rb"
-    task :to_yaml => :environment do
-      SchemaToYaml.schema_to_yaml
+    desc "Create RestfulX model.yml from schema.rb"
+    task :to_rx_yaml => :environment do
+      SchemaToRxYaml.schema_to_rx_yaml
     end
   end
-  
 end

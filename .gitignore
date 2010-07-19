@@ -1,4 +1,6 @@
+lib/restfulx/amf/ext/serializer.bundle
 pkg/*
 .loadpath
 .project
 *~
+tmp/*

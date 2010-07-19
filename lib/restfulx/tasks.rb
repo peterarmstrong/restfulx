@@ -1,8 +1,9 @@
 # Rake tasks for building RestfulX-based Flex and AIR applications
+$:.unshift(File.dirname(__FILE__)) unless $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
 require 'rake'
-require 'ftools'
 require 'rexml/document'
-require File.join(File.dirname(__FILE__), 'configuration')
+require 'activesupport'
+require 'configuration'
 
 include RestfulX::Configuration
 
@@ -33,7 +34,8 @@ namespace :rx do
       
     libs = Dir.glob(File.join(APP_ROOT, 'lib', '*.swc')).map {|lib| lib.gsub(' ', '\ ')}
       
-    additional_compiler_args = get_app_properties().elements["actionScriptProperties"].elements["compiler"].attributes["additionalCompilerArguments"]
+    additional_compiler_args = 
+      get_app_properties().elements["actionScriptProperties"].elements["compiler"].attributes["additionalCompilerArguments"]
     additional_compiler_args.gsub!("../locale/", "#{APP_ROOT}/app/locale/")
     
     cmd = "#{executable} #{opts} -library-path+=#{libs.join(',')} " << additional_compiler_args << " #{project_path.gsub(' ', '\ ')}"
@@ -98,7 +100,7 @@ namespace :rx do
   
   namespace :air do
     desc "Build project swf file as an AIR application and move it into bin-debug folder"
-    task :build do   
+    task :build do
       compile_application(:destination => 'bin-debug', :opts => '+configname=air')
     end
     

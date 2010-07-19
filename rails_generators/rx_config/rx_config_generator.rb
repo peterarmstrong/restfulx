@@ -22,7 +22,7 @@ class RxConfigGenerator < Rails::Generator::Base
       @flex_root = extract_names
     
     @base_package = options[:base_flex_package] if options[:base_flex_package]
-    @base_folder = options[:base_flex_package].gsub('.', '/').gsub(/\s/, '') if options[:base_flex_package]
+    @base_folder = options[:base_flex_package].gsub('.', '/') if options[:base_flex_package]
     @flex_root = options[:flex_root] if options[:flex_root]
     @distributed = options[:distributed]
     
@@ -49,17 +49,19 @@ class RxConfigGenerator < Rails::Generator::Base
     end
         
     @component_names = []
-    if File.exists?("#{flex_root}/#{base_folder}/components/generated")
-      @component_names = list_mxml_files("#{flex_root}/#{base_folder}/components/generated")
+    if File.exists?("#{flex_root}/#{base_folder}/views/generated")
+      @component_names = list_mxml_files("#{flex_root}/#{base_folder}/views/generated")
     end
   end
 
   def manifest
     record do |m|
-      m.file 'restfulx_tasks.rake', 'lib/tasks/restfulx_tasks.rake'
+      m.file 'restfulx_tasks.rake', 'lib/tasks/restfulx_tasks.rake' if !options[:skip_tasks]
       m.file 'flex.properties', '.flexProperties'
       m.template 'restfulx.yml', 'config/restfulx.yml'
       m.template 'restfulx.erb', 'config/initializers/restfulx.rb'
+      
+      m.template 'session_store_flash.erb', 'config/initializers/session_store_flash.rb' if RAILS_GEM_VERSION =~ /2.3/
       
       m.directory "#{flex_root}"
       
@@ -71,10 +73,10 @@ class RxConfigGenerator < Rails::Generator::Base
         m.template 'project.properties', '.project'
       end
       
-      m.template 'project-textmate.erb', "#{project_name.underscore}.tmproj"
-      m.template 'mainapp.mxml', File.join("#{flex_root}", "#{project_name}.mxml")
-      m.template 'mainapp-config.xml', File.join("#{flex_root}", "#{project_name}-config.xml")
-      m.template 'mainair-app.xml', File.join("#{flex_root}", "#{project_name}-app.xml") if @use_air
+      m.template 'project-textmate.erb', "#{project_name}.tmproj"
+      m.template 'mainapp.mxml', File.join("#{flex_root}", "#{flex_project_name}.mxml")
+      m.template 'mainapp-config.xml', File.join("#{flex_root}", "#{flex_project_name}-config.xml")
+      m.template 'mainair-app.xml', File.join("#{flex_root}", "#{flex_project_name}-app.xml") if @use_air
 
       m.directory 'html-template/history'      
       %w(index.template.html AC_OETags.js playerProductInstall.swf).each do |file|
@@ -85,19 +87,26 @@ class RxConfigGenerator < Rails::Generator::Base
         m.file "html-template/history/#{file}", "html-template/history/#{file}"
       end
       
-      %w(components controllers commands models events).each do |dir|
+      %w(views controllers commands models events helpers).each do |dir|
         m.directory "#{flex_root}/#{base_folder}/#{dir}"
       end
       
-      m.directory "#{flex_root}/#{base_folder}/components/generated"
+      m.directory "#{flex_root}/#{base_folder}/views/generated"
       
-      framework_release = RestfulX::FRAMEWORK_VERSION
+      framework_release = RestfulX::VERSION
       framework_distribution_url = "http://restfulx.github.com/releases/restfulx-#{framework_release}.swc"
       framework_destination_file = "lib/restfulx-#{framework_release}.swc"
       
       if !options[:skip_framework] && !File.exist?(framework_destination_file)
-        puts "fetching #{framework_release} framework binary from: #{framework_distribution_url} ..."
-        open(framework_destination_file, "wb").write(open(framework_distribution_url).read)
+        puts "Fetching #{framework_release} framework binary from: #{framework_distribution_url} ..."
+        begin
+          framework_swc = open(framework_distribution_url).read
+        rescue
+          puts "ERROR: Unable to download and install #{framework_distribution_url}."
+          puts "Please check your internet connectivity and try again."
+          exit
+        end
+        open(framework_destination_file, "wb").write(framework_swc) unless framework_swc.blank?
         puts "done. saved to #{framework_destination_file}"
       end
 
@@ -110,7 +119,7 @@ class RxConfigGenerator < Rails::Generator::Base
       
       m.template 'index.erb', 'app/views/flex/index.html.erb'
       
-      m.file 'routes.erb', 'config/routes.rb', :collision => :force
+      m.file 'routes.erb', 'config/routes.rb', :collision => options[:collision]
       
       FileUtils.rm 'public/index.html' if File.exist?('public/index.html')
               
@@ -126,6 +135,8 @@ class RxConfigGenerator < Rails::Generator::Base
       "Default: false") { |v| options[:air_config] = v }
     opt.on("--skip-framework", "Don't fetch the latest framework binary. You'll have to link/build the framework yourself.", 
       "Default: false") { |v| options[:skip_framework] = v }
+    opt.on("--skip-tasks", "Don't install restfulx gem tasks hook into the project.", 
+      "Default: false") { |v| options[:skip_tasks] = v }
     opt.on("--flex-root [FOLDER]", "Root folder for generated flex code.", 
       "Default: app/flex") { |v| options[:flex_root] = v }
     opt.on("--base-flex-package [PACKAGE]", "Base package for your application.", 

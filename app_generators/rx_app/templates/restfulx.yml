@@ -1,43 +1,36 @@
 # RestfulX code generation configuration options
 
-flex-root: <%= flex_root %>
+# This option controls what the main Flex application file will be called.
+# By default it will be equal to the name of your rails project camelized
+project_name: <%= project_name %>
+
+# This options determines what the root folder for generated Flex code is.
+# By default 'app/flex'
+flex_root: <%= flex_root %>
 
 # By default flex models, commands, controllers and components are genearated into
-# app/flex/<your rails project name> folder. If you'd like to customize the target folder 
+# <flex-root>/<your rails project name> folder. If you'd like to customize the target folder 
 # (to say append a "com" package before your rails project name) uncomment the line below
 # base-package must follow the usual flex package notation (a string separated by ".")
-
-base-package: <%= base_package %>
+base_package: <%= base_package %>
 
 # Main RestfulX controller is typically named AppicationController. This controller is created in 
 # <base-package>.controllers folder. You can customize the name by uncommenting the following line 
 # and changing the controller name.
+controller_name: <%= command_controller_name %>
 
-controller-name: <%= command_controller_name %>
+# If you are using Rails on the back-end and Adobe AIR as the client you can generate Rails/Flex/AIR
+# code to take advantage of synchronization (online/offline) support in RestfulX by changing the following
+# option to true. By default distribution is disabled.
+distributed: <%= distributed %>
 
-project-name: <%= flex_project_name %>
-
-defaults: &defaults
-  attachment_plugin:  'paperclip'              # => paperclip/attachment_fu
-  controller_pattern: 'default'                # => default/resource_controller
-  layouts:
-    enabled:  'true'                           # => true/false
-    default:  'default'                        # => default (more coming soon)
-  ignored:                                     # => ignored tables/fields won't appear in model.yml
-    tables: [table1 table2]
-    fields: [field1 field2]
-    
-development:
-  <<: *defaults
-
-test:
-  <<: *defaults
-
-production:
-  <<: *defaults
+# Choose the layout to use for generated Flex view components
+layouts:
+  default: 'default'
   
-# Special model.yml fields for RestfulX code-generation:
+# The following special model.yml fields are supported.
 #
+# For example:
 # attachment_field: [avatar]
 #   * arg takes Paperclip field name, or takes [uploaded_data] for Attachment_Fu
 # belongs_to: [account, profile]

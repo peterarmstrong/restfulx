@@ -1,4 +1,15 @@
-require 'activesupport'
+$:.unshift(File.dirname(__FILE__)) unless $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
+require 'erb'
+require 'schema_to_rx_yaml' if !defined?(SchemaToRxYaml)
+
+# Enumerable extensions
+module Enumerable
+  # Helps you find duplicates
+  # used in schema_to_yaml.rb for cleanup
+  def dups
+    inject({}) { |h,v| h[v] = h[v].to_i + 1; h }.reject{ |k,v| v == 1 }.keys
+  end
+end
 
 # Interestingly enough there's no way to *just* upper-case or down-case first letter of a given
 # string. Ruby's own +capitalize+ actually downcases all the rest of the characters in the string
@@ -15,58 +26,44 @@ class String
   end
 end
 
+# Primary RestfulX configuration options
 module RestfulX
-  # Computes necessary configuration options from the environment. This can be used in Rails, Merb
+  # Computes necessary configuration options from the environment. This can be used in Rails
   # or standalone from the command line.
   module Configuration
-    APP_ROOT = defined?(RAILS_ROOT) ? RAILS_ROOT : defined?(Merb) ? Merb.root : File.expand_path(".")
+    # We try to figure out the application root using a number of possible options
+    APP_ROOT = defined?(RAILS_ROOT) ? RAILS_ROOT : File.expand_path(".")
+    
+    RxSettings = SchemaToRxYaml::Settings::Core
 
-    # Extract project, package, controller names from the environment. This will respect
-    # config/restfulx.yml if it exists, you can override all of the defaults there. The defaults are:
-    # - *base-package* same as project name downcased
-    # - *controller-name* 'ApplicationController'
-    #
-    # Here's a sample restfulx.yml file:
-    #
-    # RestfulX code generation configuration options
-    # 
-    # By default flex models, commands, controllers and components are genearated into
-    # app/flex/<your rails project name> folder. If you'd like to customize the target folder 
-    # (to say append a "com" package before your rails project name) uncomment the line below
-    # base-package must follow the usual flex package notation (a string separated by ".")
-    # 
-    # base-package: com.pomodo
-    # 
-    # Main RestfulX controller is typically named AppicationController. This controller is created in 
-    # <base-package>.controllers folder. You can customize the name by uncommenting the following line 
-    # and changing the controller name.
-    # 
-    # controller-name: ApplicationController
+    # Extract project, package, controller name, etc from the environment. This will respect
+    # config/restfulx.yml if it exists, you can override all of the defaults there.
     def extract_names(project = nil)
       if project
-        project_name = project.camelcase.gsub(/\s/, '')
-        project_name_downcase = project_name.downcase
+        project_name = project.downcase.gsub(/\W/, '')
+        flex_project_name = project_name.camelize
       else
-        project_name = APP_ROOT.split("/").last.camelcase.gsub(/\s/, '')
-        project_name_downcase = project_name.downcase
+        project_name = APP_ROOT.split("/").last.gsub(/\W/, '')
+        flex_project_name = project_name.camelize
       end
             
       # give a chance to override the settings via restfulx.yml
       begin      
         config = YAML.load(File.open("#{APP_ROOT}/config/restfulx.yml"))
-        base_package = config['base-package'] || project_name_downcase
-        base_folder = base_package.gsub('.', '/').gsub(/\s/, '')
-        project_name = config['project-name'].camelcase.gsub(/\s/, '') || project_name
-        controller_name = config['controller-name'] || "ApplicationController"
-        flex_root = config['flex-root'] || "app/flex"
+        base_package = config['base_package'] || flex_project_name.downcase
+        base_folder = base_package.gsub('.', '/')
+        project_name = config['project_name'].downcase.gsub(/\W/, '') || project_name
+        flex_project_name = project_name.camelize
+        controller_name = config['controller_name'] || "ApplicationController"
+        flex_root = config['flex_root'] || "app/flex"
         distributed = config['distributed'] || false
       rescue
-        base_folder = base_package = project_name_downcase
+        base_folder = base_package = flex_project_name.downcase
         controller_name = "ApplicationController"
         flex_root = "app/flex"
         distributed = false
       end
-      [project_name, project_name_downcase, controller_name, base_package, base_folder, flex_root, distributed]
+      [project_name, flex_project_name, controller_name, base_package, base_folder, flex_root, distributed]
     end
 
     # List files ending in *.as (ActionScript) in a given folder

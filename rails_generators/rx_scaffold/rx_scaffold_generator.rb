@@ -63,7 +63,7 @@ module Rails
     end
     module Commands
       class Create
-        include SchemaToYaml
+        include SchemaToRxYaml
       end
     end
   end
@@ -71,7 +71,7 @@ end
 
 class RxScaffoldGenerator < Rails::Generator::NamedBase
   include RestfulX::Configuration
-  include SchemaToYaml
+  include SchemaToRxYaml
   
   attr_reader   :project_name, 
                 :flex_project_name, 
@@ -125,26 +125,26 @@ class RxScaffoldGenerator < Rails::Generator::NamedBase
   end
   
   def manifest
-    record do |m|      
+    record do |m|
       unless options[:flex_view_only]
         m.template 'model.as.erb',
           File.join("#{@flex_root}", base_folder, "models", "#{@class_name}.as"), 
-          :assigns => { :resource_controller_name => "#{file_name.pluralize}" }
+          :assigns => { :resource_controller_name => "#{file_name.pluralize}" }, :collision => options[:collision]
           
         m.template "controllers/#{RxSettings.controller_pattern}.rb.erb", File.join("app/controllers", 
-          controller_class_path, "#{controller_file_name}_controller.rb") unless options[:flex_only]
+          controller_class_path, "#{controller_file_name}_controller.rb"), :collision => options[:collision] unless options[:flex_only]
         
-        m.template 'model.rb.erb', File.join("app", "models", "#{file_name}.rb") unless options[:flex_only]
+        m.template 'model.rb.erb', File.join("app", "models", "#{file_name}.rb"), :collision => options[:collision] unless options[:flex_only]
       end
         
       if @layout.size > 0
         m.template "layouts/#{@layout}.erb",
-          File.join("#{@flex_root}", base_folder, "components", "generated", "#{@class_name}Box.mxml"), 
-          :assigns => { :resource_controller_name => "#{file_name.pluralize}" }
+          File.join("#{@flex_root}", base_folder, "views", "generated", "#{@class_name}Box.mxml"), 
+          :assigns => { :resource_controller_name => "#{file_name.pluralize}" }, :collision => options[:collision]
       else
         m.template "layouts/#{RxSettings.layouts.default}.erb",
-          File.join("#{@flex_root}", base_folder, "components", "generated", "#{@class_name}Box.mxml"), 
-          :assigns => { :resource_controller_name => "#{file_name.pluralize}" }
+          File.join("#{@flex_root}", base_folder, "views", "generated", "#{@class_name}Box.mxml"), 
+          :assigns => { :resource_controller_name => "#{file_name.pluralize}" }, :collision => options[:collision]
       end
 
       unless options[:skip_fixture] 
@@ -155,11 +155,20 @@ class RxScaffoldGenerator < Rails::Generator::NamedBase
       unless options[:skip_migration]
         FileUtils.rm Dir.glob("db/migrate/[0-9]*_create_#{file_path.gsub(/\//, '_').pluralize}.rb"), :force => true        
         m.migration_template 'migration.rb.erb', 'db/migrate', :assigns => {
-          :migration_name => "Create#{class_name.pluralize.gsub(/::/, '')}"
+          :migration_name => "Create#{file_path.gsub(/\//, '_').pluralize.camelcase.gsub(/::/, '')}"
         }, :migration_file_name => "create_#{file_path.gsub(/\//, '_').pluralize}" unless options[:flex_only]
       end
-      
-      m.route_resources controller_file_name
+
+      m.directory(File.join('test/functional', controller_class_path))
+      m.directory(File.join('test/unit', class_path))
+      m.directory(File.join('test/unit/helpers', class_path))
+
+      m.template('functional_test.rb', File.join('test/functional', controller_class_path, "#{controller_file_name}_controller_test.rb"))
+      m.template('helper_test.rb',     File.join('test/unit/helpers',    controller_class_path, "#{controller_file_name}_helper_test.rb"))
+
+      if File.open('config/routes.rb').grep(/^\s*map.resources :#{controller_file_name}/).empty?
+        m.route_resources controller_file_name
+      end
 
       m.dependency 'rx_controller', [name] + @args, :collision => :force
     end

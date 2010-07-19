@@ -5,16 +5,33 @@ begin
   Jeweler::Tasks.new do |gem|
     gem.name = "restfulx"
     gem.summary = "RestfulX Framework Code Generation Engine / Rails 2.1+ Integration Support"
+    gem.description = "RestfulX: The RESTful Way to develop Adobe Flex and AIR applications"
     gem.email = "dima.berastau@gmail.com"
     gem.homepage = "http://restfulx.org"
     gem.rubyforge_project = "restfulx"
     gem.authors = ["Dima Berastau"]
-    gem.files =  FileList["[A-Z]*", "{bin,app_generators,rails_generators,generators,lib,test,spec}/**/*"]
-    gem.add_dependency('rubigen', '>=1.4.0')
+    gem.files =  FileList["[A-Z]*", "{bin,app_generators,rails_generators,rxgen_generators,lib,test,spec,tasks}/**/*"]
+    gem.files.exclude 'test/**/*.log', 'test/**/*.sqlite3'
+    gem.test_files.exclude 'test/**/*.log', 'test/**/*.sqlite3'
+    gem.add_dependency('rubigen', '>= 1.5.2')
     gem.add_dependency('activesupport', '>=2.0.0')
   end
+  
+  Jeweler::RubyforgeTasks.new do |rubyforge|
+    rubyforge.doc_task = "rdoc"
+  end
 rescue LoadError
-  puts "Jeweler not available. Install it with: sudo gem install dima-jeweler -s http://gems.github.com"
+  puts "jeweler not available. Install it with: sudo gem install jeweler"
+end
+
+require 'rake/extensiontask'
+Rake::ExtensionTask.new do |ext|
+  ext.name            = 'serializer'
+  ext.gem_spec        = Rake.application.jeweler_tasks.gemspec
+  # ext.cross_compile   = true
+  # ext.cross_platform  = %w[i386-mswin32 i386-mingw32]
+  ext.ext_dir         = 'ext/restfulx/ext/amf/serializer'
+  ext.lib_dir         = 'lib/restfulx/amf/ext'
 end
 
 require 'rake/rdoctask'
